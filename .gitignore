@@ -1,0 +1,4 @@
+open-data/
+venv/
+.DS_Store
+data/
