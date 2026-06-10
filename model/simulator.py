@@ -1,8 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from model.poisson_model import load_fifa_points, fit, predict_outcome_probs, predict_scoreline_probs
-
-params_dict = fit(load_fifa_points('data/fifa_mens_rank.csv'))
+from model.poisson_model import predict_scoreline_probs
 
 HOSTS = {'United States', 'Canada', 'Mexico'}
 GROUPS = {'A': ['Mexico', 'South Africa', 'South Korea', 'Czech Republic'],
@@ -65,7 +63,7 @@ def simulate_knockout_match(home:str, away:str, params:dict) -> str:
 
     """
     while True:
-        home_goals, away_goals = simulate_match(home, away, params)
+        home_goals, away_goals = simulate_match(home, away, params, neutral=True)
         if home_goals > away_goals:
             return 'home'
         elif away_goals > home_goals:
@@ -141,7 +139,7 @@ def get_qualifiers(group_results: dict) -> list[str]:
         goals_for_lookup[x[0]]
     ), reverse=True)
 
-    return group_winners, group_runners, third_place_teams
+    return group_winners, group_runners, third_place_teams[:8]
 
 def resolve_slot(slot: str, group_winners: dict,
                  group_runners: dict, third_place_ranked: list) -> str:
@@ -152,9 +150,9 @@ def resolve_slot(slot: str, group_winners: dict,
     elif slot.startswith('3rd_'):
         groups = set(slot[4:])
         # find highest ranked third place team from those groups
-        for team, group in third_place_ranked:
+        for i, (team, group) in enumerate(third_place_ranked):
             if group in groups:
-                third_place_ranked.pop(i)
+                third_place_ranked.pop(i)  # consume so it can't be assigned twice
                 return team
 
 def simulate_knockout_stage(group_results: dict, params: dict) -> str:
@@ -175,7 +173,8 @@ def simulate_knockout_stage(group_results: dict, params: dict) -> str:
         for i in range(0, len(current_round), 2):
             home = current_round[i]
             away = current_round[i+1]
-            winner = simulate_knockout_match(home, away, params)
+            result = simulate_knockout_match(home, away, params)
+            winner = home if result == 'home' else away
             next_round.append(winner)
         current_round = next_round
 

@@ -114,7 +114,7 @@ def tau_factor(x, y, _lambda, mu, rho):
         return 1.0
 
 def log_likelihood(params: np.ndarray, df: pd.DataFrame, teams: np.ndarray,
-                   fifa_prior: None, reg_strength: float = 0.0) -> float:
+                   fifa_prior: Optional[np.ndarray], reg_strength: float = 0.0) -> float:
     """
     Returns total log likelihood of the observed match results under independent
     Poisson model with given parameters
@@ -257,11 +257,19 @@ def predict_scoreline_probs(home: str, away: str, params: dict,
     P(home scores i, away scores j).
     """
     lh, la = predict(home, away, params, neutral=neutral)
+    rho = params['rho']
 
     home_probs = poisson.pmf(np.arange(max_goals + 1), lh)
     away_probs = poisson.pmf(np.arange(max_goals + 1), la)
 
     matrix = np.outer(home_probs, away_probs)
+
+    #apply Dixon-Coles tau adjustment for low-scoring outcomes
+    for i, j in [(0,0), (0,1), (1,0), (1,1)]:
+        matrix[i, j] *= tau_factor(i, j, lh, la, rho)
+
+    matrix /= matrix.sum()  # normalize to ensure probabilities sum to 1
+
     return pd.DataFrame(matrix,
                         index=pd.RangeIndex(max_goals + 1, name='home_goals'),
                         columns=pd.RangeIndex(max_goals + 1, name='away_goals'))
