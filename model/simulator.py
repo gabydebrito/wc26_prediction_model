@@ -154,6 +154,7 @@ def resolve_slot(slot: str, group_winners: dict,
         # find highest ranked third place team from those groups
         for team, group in third_place_ranked:
             if group in groups:
+                third_place_ranked.pop(i)
                 return team
 
 def simulate_knockout_stage(group_results: dict, params: dict) -> str:
@@ -162,18 +163,18 @@ def simulate_knockout_stage(group_results: dict, params: dict) -> str:
     Returns the winner of the tournament
     """
     group_winners, group_runners, third_place_ranked = get_qualifiers(group_results)
-
+    third_place_copy = list(third_place_ranked)
     current_round = []
 
     for home_slot, away_slot in BRACKET_R32:
-        current_round.append(resolve_slot(home_slot, group_winners, group_runners, third_place_ranked))
-        current_round.append(resolve_slot(away_slot, group_winners, group_runners, third_place_ranked))
+        current_round.append(resolve_slot(home_slot, group_winners, group_runners, third_place_copy))
+        current_round.append(resolve_slot(away_slot, group_winners, group_runners, third_place_copy))
 
     while len(current_round) > 1:
         next_round = []
         for i in range(0, len(current_round), 2):
             home = current_round[i]
-            away = round[i+1]
+            away = current_round[i+1]
             winner = simulate_knockout_match(home, away, params)
             next_round.append(winner)
         current_round = next_round
