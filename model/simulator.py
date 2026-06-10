@@ -1,6 +1,7 @@
+import random
 import numpy as np
 import matplotlib.pyplot as plt
-from model.poisson_model import predict_scoreline_probs
+from poisson_model import predict_scoreline_probs
 
 HOSTS = {'United States', 'Canada', 'Mexico'}
 GROUPS = {'A': ['Mexico', 'South Africa', 'South Korea', 'Czech Republic'],
@@ -10,7 +11,7 @@ GROUPS = {'A': ['Mexico', 'South Africa', 'South Korea', 'Czech Republic'],
           'E': ['Germany', 'Curaçao', 'Ivory Coast', 'Ecuador'],
           'F': ['Netherlands', 'Sweden', 'Japan', 'Tunisia'],
           'G': ['Belgium', 'Egypt', 'Iran', 'New Zealand'],
-          'H': ['Spain', 'Cabo Verde', 'Saudi Arabia', 'Uruguay'],
+          'H': ['Spain', 'Cape Verde', 'Saudi Arabia', 'Uruguay'],
           'I': ['France', 'Senegal', 'Iraq', 'Norway'],
           'J': ['Argentina', 'Algeria', 'Austria', 'Jordan'],
           'K': ['Portugal', 'Uzbekistan', 'DR Congo', 'Colombia'],
@@ -148,37 +149,47 @@ def resolve_slot(slot: str, group_winners: dict,
     elif slot.startswith('R_'):
         return group_runners[slot[2:]]
     elif slot.startswith('3rd_'):
-        groups = set(slot[4:])
-        # find highest ranked third place team from those groups
-        for i, (team, group) in enumerate(third_place_ranked):
-            if group in groups:
-                third_place_ranked.pop(i)  # consume so it can't be assigned twice
-                return team
+        team, group = third_place_ranked.pop(0)
+        return team
 
-def simulate_knockout_stage(group_results: dict, params: dict) -> str:
+def simulate_knockout_stage(group_results: dict, params: dict) -> dict:
     """
     Simulates the knockout stage of the tournament given the qualifiers from the group stage
     Returns the winner of the tournament
     """
     group_winners, group_runners, third_place_ranked = get_qualifiers(group_results)
     third_place_copy = list(third_place_ranked)
-    current_round = []
+    random.shuffle(third_place_copy)  # shuffle to ensure random tiebreaker for third place teams
 
+    results = {}
+
+    #Marks all group stage exits
+    all_teams = set(team for group, (points, _, _) in group_results.items() for team in points)
+    qualifiers = set(group_winners.values()) | set(group_runners.values()) | set(t for t, _ in third_place_ranked)
+    for team in all_teams - qualifiers:
+        results[team] = 'Group Stage'
+
+    current_round = []
     for home_slot, away_slot in BRACKET_R32:
         current_round.append(resolve_slot(home_slot, group_winners, group_runners, third_place_copy))
         current_round.append(resolve_slot(away_slot, group_winners, group_runners, third_place_copy))
 
-    while len(current_round) > 1:
+    round_names = ['Round of 32', 'Round of 16', 'Quarter-Final', 'Semi-Final', 'Final']
+
+    for round_name in round_names:
         next_round = []
         for i in range(0, len(current_round), 2):
             home = current_round[i]
             away = current_round[i+1]
             result = simulate_knockout_match(home, away, params)
             winner = home if result == 'home' else away
+            loser = away if result == 'home' else home
+            results[loser] = round_name
             next_round.append(winner)
         current_round = next_round
 
-    return current_round[0]
+    results[current_round[0]] = 'Winner'
+    return results
 
 
 def simulate_tournament(groups: dict[str, list[str]], params: dict) -> str:
@@ -187,5 +198,4 @@ def simulate_tournament(groups: dict[str, list[str]], params: dict) -> str:
     Returns the winner of the tournament
     """
     group_results = {group: simulate_group_stage(teams, params) for group, teams in groups.items()}
-    winner = simulate_knockout_stage(group_results, params)
-    return winner
+    return simulate_knockout_stage(group_results, params)

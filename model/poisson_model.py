@@ -26,6 +26,7 @@ FIFA_NAME_MAP = {
     "Congo DR":                   "DR Congo",
     "Kyrgyz Republic":            "Kyrgyzstan",
     "Brunei Darussalam":          "Brunei",
+    "Czech Republic":             "Czechia"
 }
 
 def load_fifa_points(fifa_csv_path: str) -> dict:
@@ -38,13 +39,13 @@ def load_fifa_points(fifa_csv_path: str) -> dict:
     df = pd.read_csv(fifa_csv_path)
     df.columns = [c.strip() for c in df.columns]
 
-    df = df.sort_values("date", ascending=False)
-    latest = df.groupby("team", as_index=False).first()
+    df = df.sort_values("snapshot_date", ascending=False)
+    latest = df.groupby("country", as_index=False).first()
 
     pts = {}
     for _, row in latest.iterrows():
-        name = FIFA_NAME_MAP.get(row['team'], row['team'])
-        pts[name] = float(row['total.points'])
+        name = FIFA_NAME_MAP.get(row['country'], row['country'])
+        pts[name] = float(row['rating'])
 
     return pts
 
@@ -63,17 +64,15 @@ def _build_fifa_prior(teams: np.ndarray, fifa_points: dict) -> np.ndarray:
 
     return raw / np.mean(raw)
 
-def build_params(teams: np.ndarray) -> np.ndarray:
+def build_params(teams: np.ndarray, fifa_prior: Optional[np.ndarray]) -> np.ndarray:
     """
     Builds initial flat parameter for scipy.optiimize.minimize
     All attack/defense strengths start at 1, and home advantage starts at 1.1
     """
     n = len(teams)
-    attack = np.ones(n)
+    attack = fifa_prior if fifa_prior is not None else np.ones(n)
     defense = np.ones(n)
     home_adv = np.array([1.1])
-
-    #dixon-coles correlation parameter
     rho = np.array([-0.05])
     return np.concatenate([attack, defense, home_adv, rho])
 
@@ -168,9 +167,9 @@ def _build_bounds(n_teams: int):
     scipy L-BFGS-B uses (lower, upper) tuples; None means unbounded.
     """
     eps = 1e-6
-    attack_bounds  = [(eps, None)] * n_teams
-    defense_bounds = [(eps, None)] * n_teams
-    ha_bounds      = [(eps, None)]
+    attack_bounds  = [(0.1, 5.0)] * n_teams
+    defense_bounds = [(0.1, 5.0)] * n_teams
+    ha_bounds      = [(1.0, 2.0)]
     rho_bounds     = [(-0.2, 0.2)]  # reasonable range for Dixon-Coles rho
     return attack_bounds + defense_bounds + ha_bounds + rho_bounds
 
@@ -183,13 +182,12 @@ def _avg_attack_constraint(params: np.ndarray, n_teams: int):
 
 def fit(df: pd.DataFrame, verbose:bool = False,
         fifa_csv_path: Optional[str] = None,
-        reg_strength: float = 50.0) -> dict:
+        reg_strength: float = 200.0) -> dict:
     """
     Fits the Poisson model to the data and returns dictionary with parameters
     """
     teams = np.sort(pd.unique(df[['home_team', 'away_team']].values.ravel()))
     n = len(teams)
-    params = build_params(teams)
     bounds = _build_bounds(n)
 
     fifa_prior = None
@@ -201,6 +199,8 @@ def fit(df: pd.DataFrame, verbose:bool = False,
             covered = sum(1 for team in teams if team in fifa_points)
             print(f"FIFA prior: {covered}/{n} teams covered, reg_strength={reg_strength}")
 
+    params = build_params(teams, fifa_prior)
+
     constraints = {
         'type': 'eq',
         'fun': lambda p: _avg_attack_constraint(p, n)
@@ -211,7 +211,7 @@ def fit(df: pd.DataFrame, verbose:bool = False,
                       method = 'SLSQP',
                       bounds = bounds,
                       constraints = constraints,
-                      options = {'maxiter': 1000, 'ftol': 1e-10}
+                      options = {'maxiter': 2000, 'ftol': 1e-10}
     )
     if verbose:
         print(result)
