@@ -66,9 +66,9 @@ def simulate_knockout_match(home:str, away:str, params:dict) -> str:
     while True:
         home_goals, away_goals = simulate_match(home, away, params, neutral=True)
         if home_goals > away_goals:
-            return 'home'
+            return 'home', home_goals, away_goals
         elif away_goals > home_goals:
-            return 'away'
+            return 'away', home_goals, away_goals
 
 def simulate_group_stage(teams: list[str], params: dict) -> tuple[dict[str, int], dict[str, int], dict[str, int]]:
     """
@@ -122,12 +122,12 @@ def get_qualifiers(group_results: dict) -> list[str]:
     goals_for_lookup = {}
     goals_against_lookup = {}
 
-    for group, (points, goals_for, goals_against) in group_results.items():
+    for group, (points, goals_for, goals_against, _) in group_results.items():
         points_lookup.update(points)
         goals_for_lookup.update(goals_for)
         goals_against_lookup.update(goals_against)
 
-    for group, (points, goals_for, goals_against) in group_results.items():
+    for group, (points, goals_for, goals_against, _) in group_results.items():
         teams = sorted(points.keys(), key=lambda t: (
             points[t],
             goals_for[t] - goals_against[t],
@@ -169,7 +169,7 @@ def simulate_knockout_stage(group_results: dict, params: dict) -> dict:
     knockout_log = {}
 
     #Marks all group stage exits
-    all_teams = set(team for group, (points, _, _) in group_results.items() for team in points)
+    all_teams = set(team for group, (points, _, _, _) in group_results.items() for team in points)
     qualifiers = set(group_winners.values()) | set(group_runners.values()) | set(t for t, _ in third_place_ranked)
     for team in all_teams - qualifiers:
         results[team] = 'Group Stage'

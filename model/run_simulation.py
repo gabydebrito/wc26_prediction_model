@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 from collections import defaultdict
+import os
 from data_prep import load_and_prepare
 from simulator import simulate_tournament, GROUPS, simulate_group_stage, simulate_knockout_stage
 from poisson_model import fit, predict
@@ -15,7 +16,7 @@ def run_sim(n: int, params:dict) -> pd.DataFrame:
     for i in range(n):
         if (i+1) % 1000 == 0:
             print(f"Simulation {i+1}/{n}")
-        results = simulate_tournament(GROUPS, params)
+        results, group_results, knockout_log = simulate_tournament(GROUPS, params)
         for team, round_reached in results.items():
             counts[team][round_reached] += 1
 
@@ -65,7 +66,7 @@ def print_single_tournament(params):
 
     # You'll need simulate_knockout_stage to also return a match log
     # (see below)
-    results = simulate_knockout_stage(group_results, params)
+    results, knockout_log = simulate_knockout_stage(group_results, params)
 
     for round_name in ['Round of 32', 'Round of 16', 'Quarter-Final', 'Semi-Final', 'Final', 'Winner']:
         teams_in_round = [t for t, r in results.items() if r == round_name]
@@ -78,7 +79,11 @@ if __name__ == '__main__':
     print("Loading data and fitting model...")
     wc_teams = {team for teams in GROUPS.values() for team in teams}
     df_hist = load_and_prepare('data/results.csv')
-    df_live = load_and_prepare('data/wc26_results.csv')
+    try:
+        df_live = load_and_prepare('data/wc26_results.csv')
+    except FileNotFoundError:
+        print("No live results file found at data/wc26_results.csv; proceeding with historical data only.")
+        df_live = pd.DataFrame()
     df = pd.concat([df_hist, df_live]).drop_duplicates()
     # df = df[df['home_team'].isin(wc_teams) & df['away_team'].isin(wc_teams)]
     params1 = fit(df, fifa_csv_path='data/elo_ratings_wc2026.csv', reg_strength=50.0)
