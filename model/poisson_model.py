@@ -70,7 +70,7 @@ def build_params(teams: np.ndarray, fifa_prior: Optional[np.ndarray]) -> np.ndar
     All attack/defense strengths start at 1, and home advantage starts at 1.1
     """
     n = len(teams)
-    attack = fifa_prior if fifa_prior is not None else np.ones(n)
+    attack = fifa_prior[1:] if fifa_prior is not None else np.ones(n-1)
     defense = np.ones(n)
     home_adv = np.array([1.1])
     rho = np.array([-0.05])
@@ -82,10 +82,12 @@ def unpack_params(params: np.ndarray, teams: np.ndarray) -> tuple[dict, dict, fl
     and home advantage multiplier
     """
     n = len(teams)
-    attack = dict(zip(teams, params[:n]))
-    defense = dict(zip(teams, params[n:2*n]))
-    home_adv = float(params[2*n])
-    rho = float(params[2*n + 1])
+    attack_free = params[:n - 1]
+    attack_full = np.concatenate([[1.0], attack_free])  # pin teams[0] = 1.0
+    attack = dict(zip(teams, attack_full))
+    defense = dict(zip(teams, params[n-1:2*n-1]))
+    home_adv = float(params[2*n-1])
+    rho = float(params[2*n])
     return attack, defense, home_adv, rho
 
 def pack_params(attack: dict, defense: dict, home_adv: float, rho: float, teams: np.ndarray) -> np.ndarray:
@@ -93,7 +95,7 @@ def pack_params(attack: dict, defense: dict, home_adv: float, rho: float, teams:
     Pack attack/defense strength dictionaries and home advantage multiplier
     into a flat parameter array for optimization
     """
-    attack_values = np.array([attack[t] for t in teams])
+    attack_values = np.array([attack[t] for t in teams[1:]])
     defense_values = np.array([defense[t] for t in teams])
     return np.concatenate([attack_values, defense_values, [home_adv], [rho]])
 
@@ -177,7 +179,7 @@ def _build_bounds(n_teams: int):
     scipy L-BFGS-B uses (lower, upper) tuples; None means unbounded.
     """
     eps = 1e-6
-    attack_bounds  = [(0.1, 5.0)] * n_teams
+    attack_bounds  = [(0.1, 5.0)] * (n_teams-1)
     defense_bounds = [(0.1, 5.0)] * n_teams
     ha_bounds      = [(1.0, 2.0)]
     rho_bounds     = [(-0.2, 0.2)]  # reasonable range for Dixon-Coles rho
@@ -211,17 +213,16 @@ def fit(df: pd.DataFrame, verbose:bool = False,
 
     params = build_params(teams, fifa_prior)
 
-    constraints = {
-        'type': 'eq',
-        'fun': lambda p: _avg_attack_constraint(p, n)
-    }
+    # constraints = {
+    #     'type': 'eq',
+    #     'fun': lambda p: _avg_attack_constraint(p, n)
+    # }
 
     result = minimize(fun = lambda p: -log_likelihood(p, df, teams, fifa_prior, reg_strength),
                       x0 = params,
                       method = 'L-BFGS-B',
                       bounds = bounds,
-                      constraints = constraints,
-                      options = {'maxiter': 2000, 'ftol': 1e-10}
+                      options = {'maxiter': 10000, 'ftol': 1e-10}
     )
     if verbose:
         print(result)
