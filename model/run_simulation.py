@@ -33,23 +33,30 @@ if __name__ == '__main__':
     print("Loading data and fitting model...")
     wc_teams = {team for teams in GROUPS.values() for team in teams}
     df = load_and_prepare('data/results.csv')
-    df = df[df['home_team'].isin(wc_teams) & df['away_team'].isin(wc_teams)]
-    params = fit(df, fifa_csv_path='data/elo_ratings_wc2026.csv', reg_strength=50.0)
-    print(f"Model fit: success={params['success']}, log-likelihood={params['log_likelihood']:.2f}\n")
+    # df = df[df['home_team'].isin(wc_teams) & df['away_team'].isin(wc_teams)]
+    params1 = fit(df, fifa_csv_path='data/elo_ratings_wc2026.csv', reg_strength=50.0)
+    params2 = fit(df, fifa_csv_path='data/elo_ratings_wc2026.csv', reg_strength=200.0)
+    print(f"Model fit: success={params1['success']}, log-likelihood={params1['log_likelihood']:.2f}\n")
 
-    print("\nAttack strengths:")
-    for t, v in sorted(params['attack'].items(), key=lambda x: -x[1]):
-        print(f"{t:<25} {v:.4f}")
+    # print("\nAttack strengths:")
+    # for t, v in sorted(params['attack'].items(), key=lambda x: -x[1]):
+    #     print(f"{t:<25} {v:.4f}")
 
-    print("\nDefense strengths (lower = harder to score against):")
-    for t, v in sorted(params['defense'].items(), key=lambda x: x[1]):
-        print(f"{t:<25} {v:.4f}")
-    print(f"Running {N_SIMS} simulations...")
+    # print("\nDefense strengths (lower = harder to score against):")
+    # for t, v in sorted(params['defense'].items(), key=lambda x: x[1]):
+    #     print(f"{t:<25} {v:.4f}")
+    # print(f"Running {N_SIMS} simulations...")
 
-    results = run_sim(N_SIMS, params)
+    results = run_sim(N_SIMS, params1)
 
     pd.set_option('display.float_format', '{:.1f}'.format)
     pd.set_option('display.max_rows', 60)
     pd.set_option('display.width', 120)
     print("\nTournament probabilities (%):")
     print(results.sort_values('Winner', ascending=False).to_string())
+
+    # for param in [params1, params2]:
+    #     for team in ["Argentina","Brazil","Colombia","Ecuador",
+    #          "Spain","France","England","Portugal"]:
+    #         fifa_prior = param['fifa_prior']
+    #         print(f"\n{team:<25} {fifa_prior[team]:.4f} {param['attack'][team]:.4f} {param['defense'][team]:.4f}")
