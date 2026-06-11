@@ -153,10 +153,20 @@ def log_likelihood(params: np.ndarray, df: pd.DataFrame, teams: np.ndarray,
     log_like = base_log_like + np.log(tau)
     log_like *= weights
 
+    attack_prior = fifa_prior
+    defense_prior = defense_prior = np.ones_like(fifa_prior)
+
     if fifa_prior is not None and reg_strength > 0:
         n = len(teams)
+
         attack_vec = params[:n]
-        prior_penalty = reg_strength *np.sum((attack_vec - fifa_prior) ** 2)
+        defense_vec = params[n:2*n]
+
+        attack_penalty = np.sum((attack_vec - attack_prior) ** 2)
+
+        defense_penalty = np.sum((defense_vec - defense_prior) ** 2)
+
+        prior_penalty = reg_strength * (attack_penalty + defense_penalty)
 
         return float(log_like.sum()) - prior_penalty
     return float(log_like.sum())
@@ -208,7 +218,7 @@ def fit(df: pd.DataFrame, verbose:bool = False,
 
     result = minimize(fun = lambda p: -log_likelihood(p, df, teams, fifa_prior, reg_strength),
                       x0 = params,
-                      method = 'SLSQP',
+                      method = 'L-BFGS-B',
                       bounds = bounds,
                       constraints = constraints,
                       options = {'maxiter': 2000, 'ftol': 1e-10}
