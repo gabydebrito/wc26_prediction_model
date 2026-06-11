@@ -34,7 +34,7 @@ if __name__ == '__main__':
     wc_teams = {team for teams in GROUPS.values() for team in teams}
     df = load_and_prepare('data/results.csv')
     # df = df[df['home_team'].isin(wc_teams) & df['away_team'].isin(wc_teams)]
-    params1 = fit(df, fifa_csv_path='data/elo_ratings_wc2026.csv', reg_strength=5.0)
+    params1 = fit(df, fifa_csv_path='data/elo_ratings_wc2026.csv', reg_strength=50.0)
     params2 = fit(df, fifa_csv_path='data/elo_ratings_wc2026.csv', reg_strength=200.0)
     print(f"Model fit: success={params1['success']}, log-likelihood={params1['log_likelihood']:.2f}\n")
 

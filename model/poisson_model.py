@@ -156,16 +156,20 @@ def log_likelihood(params: np.ndarray, df: pd.DataFrame, teams: np.ndarray,
     log_like *= weights
 
     attack_prior = fifa_prior
-    defense_prior = defense_prior = np.ones_like(fifa_prior)
+    defense_prior = np.ones_like(fifa_prior) if fifa_prior is not None else None
 
     if fifa_prior is not None and reg_strength > 0:
         n = len(teams)
 
-        attack_vec = params[:n]
-        defense_vec = params[n:2*n]
+        # params layout: [attack_free (n-1), defense (n), home_adv (1), rho (1)]
+        # reconstruct full attack vector with pinned first element = 1.0
+        attack_free = params[:n-1]
+        attack_vec = np.concatenate([[1.0], attack_free])
+
+        # defense vector is next n elements
+        defense_vec = params[n-1:2*n-1]
 
         attack_penalty = np.sum((attack_vec - attack_prior) ** 2)
-
         defense_penalty = np.sum((defense_vec - defense_prior) ** 2)
 
         prior_penalty = reg_strength * (attack_penalty + defense_penalty)
@@ -240,8 +244,9 @@ def fit(df: pd.DataFrame, verbose:bool = False,
         'teams':          teams,
         'success':        result.success,
         'log_likelihood': -result.fun,
-        'rho':           rho,
+        'rho':            rho,
         'fifa_prior':     dict(zip(teams, fifa_prior)) if fifa_prior is not None else None,
+        'optim_result':   result,
     }
 
 def predict(home: str, away: str, params: dict, neutral: bool=False) -> tuple[float, float]:
