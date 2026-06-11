@@ -78,12 +78,16 @@ def simulate_group_stage(teams: list[str], params: dict) -> tuple[dict[str, int]
     points = {team: 0 for team in teams}
     goals_for = {team:0 for team in teams}
     goals_against = {team:0 for team in teams}
+    match_log = []
+
     for i in range(len(teams)):
         for j in range(i+1, len(teams)):
             home = teams[i]
             away = teams[j]
             outcome = simulate_match(home, away, params, neutral=is_neutral(home, away))
             home_score, away_score = outcome
+            match_log.append((home, away, home_score, away_score))
+
             goals_for[home] += home_score
             goals_against[home] += away_score
             goals_for[away] += away_score
@@ -98,7 +102,7 @@ def simulate_group_stage(teams: list[str], params: dict) -> tuple[dict[str, int]
                 points[home] += 1
                 points[away] += 1
 
-    return points, goals_for, goals_against
+    return points, goals_for, goals_against, match_log
 
 def get_qualifiers(group_results: dict) -> list[str]:
     """
@@ -162,6 +166,7 @@ def simulate_knockout_stage(group_results: dict, params: dict) -> dict:
     random.shuffle(third_place_copy)  # shuffle to ensure random tiebreaker for third place teams
 
     results = {}
+    knockout_log = {}
 
     #Marks all group stage exits
     all_teams = set(team for group, (points, _, _) in group_results.items() for team in points)
@@ -178,18 +183,23 @@ def simulate_knockout_stage(group_results: dict, params: dict) -> dict:
 
     for round_name in round_names:
         next_round = []
+        round_matches = []
         for i in range(0, len(current_round), 2):
             home = current_round[i]
             away = current_round[i+1]
-            result = simulate_knockout_match(home, away, params)
+            result, home_goals, away_goals = simulate_knockout_match(home, away, params)
             winner = home if result == 'home' else away
             loser = away if result == 'home' else home
+
+            round_matches.append((home, away, home_goals, away_goals, winner))
             results[loser] = round_name
             next_round.append(winner)
+
+        knockout_log[round_name] = round_matches
         current_round = next_round
 
     results[current_round[0]] = 'Winner'
-    return results
+    return results, knockout_log
 
 
 def simulate_tournament(groups: dict[str, list[str]], params: dict) -> str:
@@ -198,4 +208,5 @@ def simulate_tournament(groups: dict[str, list[str]], params: dict) -> str:
     Returns the winner of the tournament
     """
     group_results = {group: simulate_group_stage(teams, params) for group, teams in groups.items()}
-    return simulate_knockout_stage(group_results, params)
+    results, knockout_log = simulate_knockout_stage(group_results, params)
+    return results, group_results, knockout_log
