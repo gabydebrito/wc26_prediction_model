@@ -32,7 +32,9 @@ def run_sim(n: int, params:dict) -> pd.DataFrame:
 if __name__ == '__main__':
     print("Loading data and fitting model...")
     wc_teams = {team for teams in GROUPS.values() for team in teams}
-    df = load_and_prepare('data/results.csv')
+    df_hist = load_and_prepare('data/results.csv')
+    df_live = load_and_prepare('data/wc26_results.csv')
+    df = pd.concat(df_hist, df_live).drop_duplicates()
     # df = df[df['home_team'].isin(wc_teams) & df['away_team'].isin(wc_teams)]
     params1 = fit(df, fifa_csv_path='data/elo_ratings_wc2026.csv', reg_strength=50.0)
     params2 = fit(df, fifa_csv_path='data/elo_ratings_wc2026.csv', reg_strength=200.0)
