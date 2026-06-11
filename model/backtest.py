@@ -75,12 +75,12 @@ def backtest_wc(results_path, fifa_csv_path, wc_year=2022, reg_strength=50.0):
     return results_df, mean_bs
 
 if __name__ == '__main__':
-    results_df, mean_bs = backtest_wc(
-        results_path='data/results.csv',
-        fifa_csv_path='data/elo_ratings_wc2026.csv',
-        wc_year=2022,
-        reg_strength=50.0
-    )
+    # results_df, mean_bs = backtest_wc(
+    #     results_path='data/results.csv',
+    #     fifa_csv_path='data/elo_ratings_wc2026.csv',
+    #     wc_year=2022,
+    #     reg_strength=50.0
+    # )
 
     for rs in [10, 50, 100, 200, 500]:
         _, bs = backtest_wc('data/results.csv', 'data/elo_ratings_wc2026.csv', reg_strength=rs)

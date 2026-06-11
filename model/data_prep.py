@@ -18,8 +18,11 @@ TOURNAMENT_WEIGHTS = {
     'AFC Asian Cup': 2.0,
     'CONCACAF Gold Cup': 2.0,
     'FIFA World Cup qualification': 1.5,
-    'UEFA European Championship qualification': 1.5,
+    'UEFA European Championship qualification': 2.0,
     'Copa América qualification': 1.5,
+    'Africa Cup of Nations qualification': 1.0,        # bump down
+    'AFC Asian Cup qualification': 0.75,               # significantly down
+    'CONCACAF Gold Cup qualification': 0.75,
     'Friendly': 0.5
 }
 

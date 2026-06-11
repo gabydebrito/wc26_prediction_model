@@ -3,7 +3,7 @@ import pandas as pd
 from collections import defaultdict
 from data_prep import load_and_prepare
 from simulator import simulate_tournament, GROUPS
-from poisson_model import fit
+from poisson_model import fit, predict
 
 N_SIMS = 10000
 ROUND_ORDER = ['Group Stage', 'Round of 32', 'Round of 16',
@@ -74,3 +74,4 @@ if __name__ == '__main__':
     #          "Spain","France","England","Portugal"]:
     #         fifa_prior = param['fifa_prior']
     #         print(f"\n{team:<25} {fifa_prior[team]:.4f} {param['attack'][team]:.4f} {param['defense'][team]:.4f}")
+    print(predict('Spain', 'Haiti', params1, neutral=True))
