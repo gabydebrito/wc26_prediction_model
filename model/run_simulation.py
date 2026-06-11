@@ -11,6 +11,17 @@ ROUND_ORDER = ['Group Stage', 'Round of 32', 'Round of 16',
                'Quarter-Final', 'Semi-Final', 'Final', 'Winner']
 
 def run_sim(n: int, params:dict) -> pd.DataFrame:
+    # ensure params contain all teams
+    all_teams = {t for teams in GROUPS.values() for t in teams}
+    missing_attack = all_teams - set(params['attack'].keys())
+    missing_defense = all_teams - set(params['defense'].keys())
+    if missing_attack or missing_defense:
+        print(f"Warning: missing param entries - attack:{len(missing_attack)} defense:{len(missing_defense)}. Filling with defaults.")
+        for t in missing_attack:
+            params['attack'][t] = 1.0
+        for t in missing_defense:
+            params['defense'][t] = 1.0
+
     counts = defaultdict(lambda: defaultdict(int))
 
     for i in range(n):
