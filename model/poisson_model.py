@@ -62,7 +62,7 @@ def _build_fifa_prior(teams: np.ndarray, fifa_points: dict) -> np.ndarray:
 
     raw = np.where(np.isnan(raw), avg_pts, raw)
 
-    return raw / np.mean(raw)
+    return raw / np.median(raw)
 
 def build_params(teams: np.ndarray, fifa_prior: Optional[np.ndarray]) -> np.ndarray:
     """
@@ -226,7 +226,7 @@ def fit(df: pd.DataFrame, verbose:bool = False,
                       x0 = params,
                       method = 'L-BFGS-B',
                       bounds = bounds,
-                      options = {'maxiter': 10000, 'ftol': 1e-10}
+                      options = {'maxiter': 50000, 'ftol': 1e-8, 'gtol': 1e-6}
     )
     if verbose:
         print(result)

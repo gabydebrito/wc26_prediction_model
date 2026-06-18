@@ -97,18 +97,14 @@ if __name__ == '__main__':
         df_live = pd.DataFrame()
     df = pd.concat([df_hist, df_live]).drop_duplicates()
     # df = df[df['home_team'].isin(wc_teams) & df['away_team'].isin(wc_teams)]
-    params1 = fit(df, fifa_csv_path='data/elo_ratings_wc2026.csv', reg_strength=50.0)
-    params2 = fit(df, fifa_csv_path='data/elo_ratings_wc2026.csv', reg_strength=200.0)
-    print(f"Model fit: success={params1['success']}, log-likelihood={params1['log_likelihood']:.2f}\n")
+    params = fit(df, fifa_csv_path='data/elo_ratings_wc2026.csv', reg_strength=50.0)
+    print(f"Model fit: success={params['success']}, log-likelihood={params['log_likelihood']:.2f}\n")
 
-    # print("\nAttack strengths:")
-    # for t, v in sorted(params['attack'].items(), key=lambda x: -x[1]):
-    #     print(f"{t:<25} {v:.4f}")
-
-    # print("\nDefense strengths (lower = harder to score against):")
-    # for t, v in sorted(params['defense'].items(), key=lambda x: x[1]):
-    #     print(f"{t:<25} {v:.4f}")
-    # print(f"Running {N_SIMS} simulations...")
+    # params_hist_only = fit(df_hist, fifa_csv_path='data/elo_ratings_wc2026.csv', reg_strength=50.0)
+    # for team in ['France', 'Argentina', 'Norway', 'Iraq', 'Saudi Arabia', 'Uruguay']:
+    #     h = params_hist_only['attack'].get(team, float('nan'))
+    #     l = params['attack'].get(team, float('nan'))
+    #     print(f"{team:<20} hist={h:.4f}  live={l:.4f}")
 
     top_teams = ['Spain', 'France', 'Argentina', 'Brazil', 'England',
              'Morocco', 'Japan', 'Haiti', 'Qatar', 'Cape Verde']
@@ -116,15 +112,15 @@ if __name__ == '__main__':
     print(f"{'Team':<25} {'Attack':>8} {'Defense':>8} {'FIFA Prior':>10}")
     print("-" * 55)
     for t in top_teams:
-        att = params1['attack'].get(t, float('nan'))
-        def_ = params1['defense'].get(t, float('nan'))
-        pri = params1['fifa_prior'].get(t, float('nan')) if params1['fifa_prior'] else float('nan')
+        att = params['attack'].get(t, float('nan'))
+        def_ = params['defense'].get(t, float('nan'))
+        pri = params['fifa_prior'].get(t, float('nan')) if params['fifa_prior'] else float('nan')
         print(f"{t:<25} {att:>8.4f} {def_:>8.4f} {pri:>10.4f}")
 
-    print(f"\nAttack std:   {np.std(list(params1['attack'].values())):.4f}")
-    print(f"Defense std:  {np.std(list(params1['defense'].values())):.4f}")
+    print(f"\nAttack std:   {np.std(list(params['attack'].values())):.4f}")
+    print(f"Defense std:  {np.std(list(params['defense'].values())):.4f}")
 
-    results = run_sim(N_SIMS, params1)
+    results = run_sim(N_SIMS, params)
 
     pd.set_option('display.float_format', '{:.1f}'.format)
     pd.set_option('display.max_rows', 60)
@@ -137,4 +133,4 @@ if __name__ == '__main__':
     #          "Spain","France","England","Portugal"]:
     #         fifa_prior = param['fifa_prior']
     #         print(f"\n{team:<25} {fifa_prior[team]:.4f} {param['attack'][team]:.4f} {param['defense'][team]:.4f}")
-    print_single_tournament(params1)
+    print_single_tournament(params)

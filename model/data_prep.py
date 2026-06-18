@@ -28,7 +28,7 @@ TOURNAMENT_WEIGHTS = {
 
 DEFAULT_TOURNAMENT_WEIGHT = 1.0
 
-def load_and_prepare(file_path: str, min_year: int = 1993, time_decay_years: float = 3.0,
+def load_and_prepare(file_path: str, min_year: int = 2006, time_decay_years: float = 3.0,
                      reference_date: datetime | None = None) -> pd.DataFrame:
     """
     Loads results.csv and returns clean, weighted DataFrame.
