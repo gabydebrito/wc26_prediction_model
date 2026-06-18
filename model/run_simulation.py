@@ -51,7 +51,7 @@ def print_single_tournament(params):
 
     for group, teams in GROUPS.items():
         points, gf, ga, match_log = simulate_group_stage(teams, params)
-        group_results[group] = (points, gf, ga)
+        group_results[group] = (points, gf, ga, match_log)
         all_match_logs[group] = match_log
 
     # Print each group
@@ -63,7 +63,7 @@ def print_single_tournament(params):
             print(f"  {home} {hs}–{as_} {away}")
 
         # Standings
-        points, gf, ga = group_results[group]
+        points, gf, ga, _ = group_results[group]
         teams_sorted = sorted(points, key=lambda t: (points[t], gf[t]-ga[t], gf[t]), reverse=True)
         print(f"  {'Team':<25} {'Pts':>3} {'GD':>4} {'GF':>4}")
         for i, t in enumerate(teams_sorted):

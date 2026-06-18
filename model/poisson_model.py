@@ -172,7 +172,7 @@ def log_likelihood(params: np.ndarray, df: pd.DataFrame, teams: np.ndarray,
         attack_penalty = np.sum((attack_vec - attack_prior) ** 2)
         defense_penalty = np.sum((defense_vec - defense_prior) ** 2)
 
-        prior_penalty = reg_strength * (attack_penalty + defense_penalty)
+        prior_penalty = reg_strength * (attack_penalty + 0.1*defense_penalty)
 
         return float(log_like.sum()) - prior_penalty
     return float(log_like.sum())
