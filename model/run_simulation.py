@@ -100,6 +100,11 @@ if __name__ == '__main__':
     params = fit(df, fifa_csv_path='data/elo_ratings_wc2026.csv', reg_strength=50.0)
     print(f"Model fit: success={params['success']}, log-likelihood={params['log_likelihood']:.2f}\n")
 
+    print(f"Converged: {params['success']}")
+    print(f"Log-likelihood: {params['log_likelihood']:.2f}")
+    for team in ['France', 'Argentina', 'Morocco', 'Brazil', 'Spain']:
+        print(f"{team}: attack={params['attack'][team]:.4f} defense={params['defense'][team]:.4f}")
+
     # params_hist_only = fit(df_hist, fifa_csv_path='data/elo_ratings_wc2026.csv', reg_strength=50.0)
     # for team in ['France', 'Argentina', 'Norway', 'Iraq', 'Saudi Arabia', 'Uruguay']:
     #     h = params_hist_only['attack'].get(team, float('nan'))
@@ -134,3 +139,7 @@ if __name__ == '__main__':
     #         fifa_prior = param['fifa_prior']
     #         print(f"\n{team:<25} {fifa_prior[team]:.4f} {param['attack'][team]:.4f} {param['defense'][team]:.4f}")
     print_single_tournament(params)
+
+    print(len(df_hist))
+    print(len(df_live))
+    print(len(df))

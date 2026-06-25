@@ -62,7 +62,7 @@ def _build_fifa_prior(teams: np.ndarray, fifa_points: dict) -> np.ndarray:
 
     raw = np.where(np.isnan(raw), avg_pts, raw)
 
-    return raw / np.median(raw)
+    return raw / np.mean(raw)
 
 def build_params(teams: np.ndarray, fifa_prior: Optional[np.ndarray]) -> np.ndarray:
     """
@@ -70,8 +70,12 @@ def build_params(teams: np.ndarray, fifa_prior: Optional[np.ndarray]) -> np.ndar
     All attack/defense strengths start at 1, and home advantage starts at 1.1
     """
     n = len(teams)
-    attack = fifa_prior[1:] if fifa_prior is not None else np.ones(n-1)
-    defense = np.ones(n)
+    if fifa_prior is not None:
+        attack = np.sqrt(fifa_prior[1:])
+        defense = 1 / np.sqrt(fifa_prior)
+    else:
+        attack = np.ones(n - 1)
+        defense = np.ones(n)
     home_adv = np.array([1.1])
     rho = np.array([-0.05])
     return np.concatenate([attack, defense, home_adv, rho])
@@ -133,8 +137,19 @@ def log_likelihood(params: np.ndarray, df: pd.DataFrame, teams: np.ndarray,
     home_defense = df['home_team'].map(defense_strength).to_numpy()
     away_defense = df['away_team'].map(defense_strength).to_numpy()
 
-    lambda_home = home_attack * away_defense * home_adv
-    lambda_away = away_attack * home_defense
+    eps = 1e-8
+
+    lambda_home = np.clip(
+        home_attack * away_defense * home_adv,
+        eps,
+        None,
+    )
+
+    lambda_away = np.clip(
+        away_attack * home_defense,
+        eps,
+        None,
+    )
 
     home_scores = df['home_score'].to_numpy()
     away_scores = df['away_score'].to_numpy()
@@ -156,8 +171,12 @@ def log_likelihood(params: np.ndarray, df: pd.DataFrame, teams: np.ndarray,
     log_like *= weights
 
     attack_prior = fifa_prior
-    defense_prior = np.ones_like(fifa_prior) if fifa_prior is not None else None
 
+    if fifa_prior is not None:
+        defense_prior = 1.0 / fifa_prior
+        defense_prior /= np.mean(defense_prior)
+    else:
+        defense_prior = None
     if fifa_prior is not None and reg_strength > 0:
         n = len(teams)
 
@@ -169,10 +188,10 @@ def log_likelihood(params: np.ndarray, df: pd.DataFrame, teams: np.ndarray,
         # defense vector is next n elements
         defense_vec = params[n-1:2*n-1]
 
-        attack_penalty = np.sum((attack_vec - attack_prior) ** 2)
+        attack_penalty = np.sum((attack_vec - attack_prior[1:]) ** 2)
         defense_penalty = np.sum((defense_vec - defense_prior) ** 2)
 
-        prior_penalty = reg_strength * (attack_penalty + 0.1*defense_penalty)
+        prior_penalty = reg_strength * (attack_penalty + 0.5*defense_penalty)
 
         return float(log_like.sum()) - prior_penalty
     return float(log_like.sum())
@@ -194,7 +213,9 @@ def _avg_attack_constraint(params: np.ndarray, n_teams: int):
     Identification constraint: mean(attack) == 1.
     Without this the attack and defense scales are not separately identified.
     """
-    return params[:n_teams].mean() - 1.0
+    attack_free = params[: n_teams - 1]
+    attack_full = np.concatenate([[1.0], attack_free])
+    return attack_full.mean() - 1.0
 
 def fit(df: pd.DataFrame, verbose:bool = False,
         fifa_csv_path: Optional[str] = None,
@@ -226,7 +247,7 @@ def fit(df: pd.DataFrame, verbose:bool = False,
                       x0 = params,
                       method = 'L-BFGS-B',
                       bounds = bounds,
-                      options = {'maxiter': 50000, 'ftol': 1e-8, 'gtol': 1e-6}
+                      options = {'maxiter': 10000, 'ftol': 1e-10, 'gtol': 1e-8}
     )
     if verbose:
         print(result)
@@ -234,6 +255,12 @@ def fit(df: pd.DataFrame, verbose:bool = False,
     if not result.success:
         import warnings
         warnings.warn(f"Optimisation did not converge: {result.message}")
+
+    print("Success:", result.success)
+    print("Message:", result.message)
+    print("Iterations:", result.nit)
+    print("Function value:", result.fun)
+    print("Gradient norm:", np.linalg.norm(result.jac))
 
     attack, defense, home_adv, rho = unpack_params(result.x, teams)
 
@@ -267,7 +294,7 @@ def predict(home: str, away: str, params: dict, neutral: bool=False) -> tuple[fl
             attack[away] * defense[home])
 
 def predict_scoreline_probs(home: str, away: str, params: dict,
-                            max_goals: int = 10, neutral: bool = False) -> pd.DataFrame:
+                            max_goals: int = 12, neutral: bool = False) -> pd.DataFrame:
     """
     Return a (max_goals+1) x (max_goals+1) DataFrame where cell [i, j] is
     P(home scores i, away scores j).
